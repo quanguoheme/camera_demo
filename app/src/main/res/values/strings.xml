@@ -1,8 +1,22 @@
 <resources>
     <string name="app_name">Camera Demo</string>
-    <string name="title_camera">Camera Demo</string>
+    <string name="title_camera">Camera Rotation &amp; Mirror Demo</string>
     <string name="msg_camera_permission_required">Camera permission is required to run this demo.</string>
     <string name="btn_request_permission">Grant Camera Permission</string>
-    <string name="camera_preview_placeholder">Camera Preview Area</string>
+    <string name="mode_matrix">Matrix 矩阵变换模式</string>
+    <string name="mode_view_scale">View Scale / setDisplayOrientation 模式</string>
+    <string name="label_mode">变换模式：</string>
+    <string name="label_rotation">旋转角度：</string>
+    <string name="label_mirror">镜像控制：</string>
+    <string name="label_camera_device">摄像头控制：</string>
+    <string name="rot_0">0°</string>
+    <string name="rot_90">90°</string>
+    <string name="rot_180">180°</string>
+    <string name="rot_270">270°</string>
+    <string name="mirror_h">水平镜像 (左右)</string>
+    <string name="mirror_v">垂直镜像 (上下)</string>
+    <string name="btn_switch_camera">切换摄像头</string>
+    <string name="btn_reset">重置变换</string>
 </resources>
+
 
