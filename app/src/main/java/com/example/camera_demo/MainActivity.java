@@ -18,7 +18,6 @@ import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import java.io.IOException;
 import java.util.List;
 
 @SuppressWarnings("deprecation")
@@ -33,10 +32,23 @@ public final class MainActivity extends Activity implements TextureView.SurfaceT
     }
 
     private TextureView textureView;
-    private TextView tvStatusInfo;
     private LinearLayout layoutPermissionPrompt;
     private Button btnGrantPermission;
 
+    // HUD 状态
+    private LinearLayout layoutHud;
+    private TextView tvHudTitle;
+    private TextView tvStatusInfo;
+    private boolean isHudCollapsed = false;
+
+    // 抽屉控件
+    private Button btnOpenDrawer;
+    private View viewDrawerMask;
+    private LinearLayout layoutDrawer;
+    private Button btnCloseDrawer;
+    private boolean isDrawerOpen = false;
+
+    // 抽屉内部控制项
     private RadioGroup rgMode;
     private RadioButton rbModeMatrix;
     private RadioButton rbModeViewScale;
@@ -71,6 +83,7 @@ public final class MainActivity extends Activity implements TextureView.SurfaceT
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        hideSystemUI();
 
         initViews();
         setupListeners();
@@ -89,11 +102,39 @@ public final class MainActivity extends Activity implements TextureView.SurfaceT
         }
     }
 
+    private void hideSystemUI() {
+        View decorView = getWindow().getDecorView();
+        decorView.setSystemUiVisibility(
+                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                | View.SYSTEM_UI_FLAG_FULLSCREEN
+        );
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus) {
+            hideSystemUI();
+        }
+    }
+
     private void initViews() {
         textureView = findViewById(R.id.camera_texture_view);
-        tvStatusInfo = findViewById(R.id.tv_status_info);
         layoutPermissionPrompt = findViewById(R.id.layout_permission_prompt);
         btnGrantPermission = findViewById(R.id.btn_grant_permission);
+
+        layoutHud = findViewById(R.id.layout_hud);
+        tvHudTitle = findViewById(R.id.tv_hud_title);
+        tvStatusInfo = findViewById(R.id.tv_status_info);
+
+        btnOpenDrawer = findViewById(R.id.btn_open_drawer);
+        viewDrawerMask = findViewById(R.id.view_drawer_mask);
+        layoutDrawer = findViewById(R.id.layout_drawer);
+        btnCloseDrawer = findViewById(R.id.btn_close_drawer);
 
         rgMode = findViewById(R.id.rg_mode);
         rbModeMatrix = findViewById(R.id.rb_mode_matrix);
@@ -115,6 +156,14 @@ public final class MainActivity extends Activity implements TextureView.SurfaceT
 
     private void setupListeners() {
         btnGrantPermission.setOnClickListener(v -> requestCameraPermission());
+
+        // HUD 折叠/展开
+        layoutHud.setOnClickListener(v -> toggleHud());
+
+        // 抽屉展开/收起
+        btnOpenDrawer.setOnClickListener(v -> openDrawer());
+        btnCloseDrawer.setOnClickListener(v -> closeDrawer());
+        viewDrawerMask.setOnClickListener(v -> closeDrawer());
 
         rgMode.setOnCheckedChangeListener((group, checkedId) -> {
             if (checkedId == R.id.rb_mode_matrix) {
@@ -143,6 +192,57 @@ public final class MainActivity extends Activity implements TextureView.SurfaceT
         btnSwitchCamera.setOnClickListener(v -> switchCamera());
 
         btnReset.setOnClickListener(v -> resetTransforms());
+    }
+
+    private void toggleHud() {
+        isHudCollapsed = !isHudCollapsed;
+        tvStatusInfo.setVisibility(isHudCollapsed ? View.GONE : View.VISIBLE);
+        tvHudTitle.setText(isHudCollapsed ? "📊 相机状态 (点击展开)" : getString(R.string.hud_title));
+    }
+
+    private void openDrawer() {
+        if (isDrawerOpen) return;
+        isDrawerOpen = true;
+
+        viewDrawerMask.setVisibility(View.VISIBLE);
+        viewDrawerMask.setAlpha(0f);
+        viewDrawerMask.animate().alpha(1f).setDuration(220).start();
+
+        layoutDrawer.setVisibility(View.VISIBLE);
+        float drawerWidth = layoutDrawer.getWidth() > 0 ? layoutDrawer.getWidth() : (290 * getResources().getDisplayMetrics().density);
+        layoutDrawer.setTranslationX(drawerWidth);
+        layoutDrawer.animate()
+                .translationX(0f)
+                .setDuration(220)
+                .setListener(null)
+                .start();
+    }
+
+    private void closeDrawer() {
+        if (!isDrawerOpen) return;
+        isDrawerOpen = false;
+
+        viewDrawerMask.animate().alpha(0f).setDuration(180).withEndAction(() -> {
+            viewDrawerMask.setVisibility(View.GONE);
+        }).start();
+
+        float drawerWidth = layoutDrawer.getWidth() > 0 ? layoutDrawer.getWidth() : (290 * getResources().getDisplayMetrics().density);
+        layoutDrawer.animate()
+                .translationX(drawerWidth)
+                .setDuration(180)
+                .withEndAction(() -> {
+                    layoutDrawer.setVisibility(View.GONE);
+                })
+                .start();
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (isDrawerOpen) {
+            closeDrawer();
+        } else {
+            super.onBackPressed();
+        }
     }
 
     private void setRotation(int degrees) {
@@ -194,6 +294,7 @@ public final class MainActivity extends Activity implements TextureView.SurfaceT
     @Override
     protected void onResume() {
         super.onResume();
+        hideSystemUI();
         if (checkCameraPermission() && textureView.isAvailable()) {
             startCamera();
         }
@@ -292,7 +393,12 @@ public final class MainActivity extends Activity implements TextureView.SurfaceT
             return null;
         }
 
-        // 优先匹配常用的 720p / 1080p / 480p 分辨率
+        // 优先匹配 800x480 或常见的 720p / 1080p / 480p 分辨率
+        for (Camera.Size size : sizes) {
+            if (size.width == 800 && size.height == 480) {
+                return size;
+            }
+        }
         for (Camera.Size size : sizes) {
             if (size.width == 1280 && size.height == 720) {
                 return size;
@@ -319,7 +425,6 @@ public final class MainActivity extends Activity implements TextureView.SurfaceT
 
         if (currentMode == TransformMode.MATRIX) {
             // 模式 1：TextureView Matrix 矩阵变换
-            // 重置 View 级别的 scale
             textureView.setScaleX(1.0f);
             textureView.setScaleY(1.0f);
 
@@ -356,7 +461,6 @@ public final class MainActivity extends Activity implements TextureView.SurfaceT
 
         } else {
             // 模式 2：View Scale & setDisplayOrientation 变换
-            // 重置 TextureView Matrix 为单位矩阵
             textureView.setTransform(null);
 
             if (camera != null) {
@@ -387,11 +491,11 @@ public final class MainActivity extends Activity implements TextureView.SurfaceT
         }
 
         String resStr = (previewSize != null) ? (previewSize.width + "x" + previewSize.height) : "未知";
-        String modeStr = (currentMode == TransformMode.MATRIX) ? "Matrix 矩阵变换" : "View Scale / setDisplayOrientation";
+        String modeStr = (currentMode == TransformMode.MATRIX) ? "Matrix" : "View Scale/Orientation";
 
         String infoText = String.format(
-                "状态: %s | 相机: ID %d (%s, 传感器方向 %d°)\n" +
-                "模式: %s | 分辨率: %s | View: %dx%d\n" +
+                "状态: %s | 相机: #%d (%s, %d°)\n" +
+                "模式: %s | 分辨率: %s | 视窗: %dx%d\n" +
                 "旋转: %d° | 水平镜像: %s | 垂直镜像: %s",
                 state, currentCameraId, facingStr, sensorOrientation,
                 modeStr, resStr, surfaceWidth, surfaceHeight,

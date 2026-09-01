@@ -1,8 +1,8 @@
 <resources>
     <string name="app_name">Camera Demo</string>
-    <string name="title_camera">Camera Rotation &amp; Mirror Demo</string>
-    <string name="msg_camera_permission_required">Camera permission is required to run this demo.</string>
-    <string name="btn_request_permission">Grant Camera Permission</string>
+    <string name="title_camera">Camera 旋转镜像控制</string>
+    <string name="msg_camera_permission_required">需要相机权限才能运行本演示程序</string>
+    <string name="btn_request_permission">授权相机权限</string>
     <string name="mode_matrix">Matrix 矩阵变换模式</string>
     <string name="mode_view_scale">View Scale / setDisplayOrientation 模式</string>
     <string name="label_mode">变换模式：</string>
@@ -17,6 +17,10 @@
     <string name="mirror_v">垂直镜像 (上下)</string>
     <string name="btn_switch_camera">切换摄像头</string>
     <string name="btn_reset">重置变换</string>
+    <string name="btn_open_settings">⚙ 控制面板</string>
+    <string name="btn_close_drawer">✕ 收起面板</string>
+    <string name="hud_title">📊 相机状态 (点击收起/展开)</string>
 </resources>
+
 
 
