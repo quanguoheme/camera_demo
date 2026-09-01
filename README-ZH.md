@@ -2,10 +2,14 @@
 
 [English](README.md) | [中文文档](README-ZH.md)
 
+[![GitHub Repo](https://img.shields.io/badge/GitHub-quanguoheme%2Fcamera__demo-181717.svg?logo=github)](https://github.com/quanguoheme/camera_demo)
 [![Android](https://img.shields.io/badge/Platform-Android%2014%2B-green.svg)](https://developer.android.com)
 [![Gradle](https://img.shields.io/badge/Gradle-9.2.1-blue.svg)](https://gradle.org)
 [![API](https://img.shields.io/badge/API-34%2B-orange.svg)](https://developer.android.com/about/dashboards)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+
+- **GitHub 仓库地址**：[https://github.com/quanguoheme/camera_demo](https://github.com/quanguoheme/camera_demo)
+- **Git Clone 地址**：`https://github.com/quanguoheme/camera_demo.git`
 
 本工程是一个基于 `android.hardware.Camera` (Camera 1 API) 与 `TextureView` 实现的高性能 Android 相机预览演示应用。
 专门针对嵌入式开发板、工控主板（如瑞芯微 RK3566 / RK3568 / RK3588 等）及 800x480 横屏设备进行了全屏沉浸式预览与滑出抽屉式控制面板优化。
@@ -116,7 +120,14 @@ textureView.setScaleY(mirrorVertical ? -1.0f : 1.0f);
 
 ## 编译与烧录运行指南
 
-### 1. 编译生成 APK
+### 1. 克隆项目仓库
+
+```powershell
+git clone https://github.com/quanguoheme/camera_demo.git
+cd camera_demo
+```
+
+### 2. 编译生成 APK
 
 在项目根目录下通过 Gradle Wrapper 编译 Debug 包：
 
@@ -127,7 +138,7 @@ textureView.setScaleY(mirrorVertical ? -1.0f : 1.0f);
 编译成功后，APK 文件位于：
 `app/build/outputs/apk/debug/app-debug.apk`
 
-### 2. ADB 烧录安装
+### 3. ADB 烧录安装
 
 确保设备已通过 USB 连接并开启开发者调试模式：
 
@@ -142,7 +153,7 @@ adb install -r app\build\outputs\apk\debug\app-debug.apk
 adb shell pm grant com.example.camera_demo android.permission.CAMERA
 ```
 
-### 3. 启动应用
+### 4. 启动应用
 
 ```powershell
 adb shell am start -n com.example.camera_demo/.MainActivity

@@ -1,5 +1,8 @@
 # Camera Demo (Android 相机旋转与镜像演示项目)
 
+- **GitHub 仓库主页**：[https://github.com/quanguoheme/camera_demo](https://github.com/quanguoheme/camera_demo)
+- **Git Clone 地址**：`https://github.com/quanguoheme/camera_demo.git`
+
 本工程是一个基于 `android.hardware.Camera` (Camera 1 API) 与 `TextureView` 实现的 Android 相机演示应用。
 专门针对嵌入式设备、工控主板（如 RK3566、RK3568 等）及 800x480 横屏设备进行了全屏预览与抽屉式控制面板深度优化。
 
@@ -50,7 +53,9 @@ camera_demo/
 │   └── README.md                       # 本说明文档
 ├── gradle/                             # Gradle 包装器
 ├── build.gradle.kts                    # 根工程构建脚本
-└── settings.gradle.kts                 # 根工程设置 (rootProject.name = "camera_demo")
+├── settings.gradle.kts                 # 根工程设置 (rootProject.name = "camera_demo")
+├── README.md                           # 英文说明文档
+└── README-ZH.md                        # 中文说明文档
 ```
 
 ---
@@ -106,7 +111,14 @@ textureView.setScaleY(mirrorVertical ? -1.0f : 1.0f);
 
 ## 编译与烧录运行指南
 
-### 1. 编译生成 APK
+### 1. 克隆项目仓库
+
+```powershell
+git clone https://github.com/quanguoheme/camera_demo.git
+cd camera_demo
+```
+
+### 2. 编译生成 APK
 
 在项目根目录下通过 Gradle Wrapper 编译 Debug 包：
 
@@ -117,7 +129,7 @@ textureView.setScaleY(mirrorVertical ? -1.0f : 1.0f);
 编译成功后，APK 文件位于：
 `app/build/outputs/apk/debug/app-debug.apk`
 
-### 2. ADB 烧录安装
+### 3. ADB 烧录安装
 
 确保设备已通过 USB 连接并开启开发者调试模式：
 
@@ -132,7 +144,7 @@ adb install -r app\build\outputs\apk\debug\app-debug.apk
 adb shell pm grant com.example.camera_demo android.permission.CAMERA
 ```
 
-### 3. 启动应用
+### 4. 启动应用
 
 ```powershell
 adb shell am start -n com.example.camera_demo/.MainActivity

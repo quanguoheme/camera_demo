@@ -2,10 +2,14 @@
 
 [English](README.md) | [中文文档](README-ZH.md)
 
+[![GitHub Repo](https://img.shields.io/badge/GitHub-quanguoheme%2Fcamera__demo-181717.svg?logo=github)](https://github.com/quanguoheme/camera_demo)
 [![Android](https://img.shields.io/badge/Platform-Android%2014%2B-green.svg)](https://developer.android.com)
 [![Gradle](https://img.shields.io/badge/Gradle-9.2.1-blue.svg)](https://gradle.org)
 [![API](https://img.shields.io/badge/API-34%2B-orange.svg)](https://developer.android.com/about/dashboards)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+
+- **GitHub Repository**: [https://github.com/quanguoheme/camera_demo](https://github.com/quanguoheme/camera_demo)
+- **Clone URL**: `https://github.com/quanguoheme/camera_demo.git`
 
 A robust Android camera preview demonstration application built on top of `android.hardware.Camera` (Camera 1 API) and `TextureView`.
 Designed and optimized for embedded devices, industrial motherboards (e.g. Rockchip RK3566 / RK3568 / RK3588), and 800x480 landscape touchscreens.
@@ -101,7 +105,14 @@ textureView.setTransform(matrix);
 
 ## Quick Start & Build Instructions
 
-### 1. Build APK
+### 1. Clone Repository
+
+```powershell
+git clone https://github.com/quanguoheme/camera_demo.git
+cd camera_demo
+```
+
+### 2. Build APK
 
 Run the Gradle wrapper to build the debug APK:
 
@@ -112,7 +123,7 @@ Run the Gradle wrapper to build the debug APK:
 The compiled APK will be located at:
 `app/build/outputs/apk/debug/app-debug.apk`
 
-### 2. Install via ADB
+### 3. Install via ADB
 
 Ensure your Android device is connected with ADB debugging enabled:
 
@@ -127,7 +138,7 @@ adb install -r app\build\outputs\apk\debug\app-debug.apk
 adb shell pm grant com.example.camera_demo android.permission.CAMERA
 ```
 
-### 3. Launch Application
+### 4. Launch Application
 
 ```powershell
 adb shell am start -n com.example.camera_demo/.MainActivity
