@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">Camera Demo</string>
+    <string name="title_camera">Camera Demo</string>
+    <string name="msg_camera_permission_required">Camera permission is required to run this demo.</string>
+    <string name="btn_request_permission">Grant Camera Permission</string>
+    <string name="camera_preview_placeholder">Camera Preview Area</string>
+</resources>
+
