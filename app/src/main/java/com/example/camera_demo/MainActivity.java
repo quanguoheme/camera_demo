@@ -490,15 +490,16 @@ public final class MainActivity extends Activity implements TextureView.SurfaceT
         } catch (Exception ignored) {
         }
 
+        String resStr = (previewSize != null) ? (previewSize.width + "x" + previewSize.height) : "未知";
         String modeStr = (currentMode == TransformMode.MATRIX) ? "Matrix" : "View Scale/Orientation";
 
         String infoText = String.format(
                 "状态: %s | 相机: #%d (%s, %d°)\n" +
-                "模式: %s | 旋转: %d°\n" +
-                "水平镜像: %s | 垂直镜像: %s",
+                "模式: %s | 分辨率: %s | 视窗: %dx%d\n" +
+                "旋转: %d° | 水平镜像: %s | 垂直镜像: %s",
                 state, currentCameraId, facingStr, sensorOrientation,
-                modeStr, rotationDegrees,
-                mirrorHorizontal ? "开" : "关", mirrorVertical ? "开" : "关"
+                modeStr, resStr, surfaceWidth, surfaceHeight,
+                rotationDegrees, mirrorHorizontal ? "开" : "关", mirrorVertical ? "开" : "关"
         );
 
         tvStatusInfo.setText(infoText);
