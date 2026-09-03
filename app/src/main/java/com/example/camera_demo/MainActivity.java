@@ -7,6 +7,9 @@ import android.graphics.Matrix;
 import android.graphics.SurfaceTexture;
 import android.hardware.Camera;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.SystemClock;
 import android.util.Log;
 import android.view.TextureView;
 import android.view.View;
@@ -79,6 +82,17 @@ public final class MainActivity extends Activity implements TextureView.SurfaceT
     private boolean mirrorHorizontal = false;
     private boolean mirrorVertical = false;
 
+    // 看门狗与热插拔重连
+    private static final long FRAME_TIMEOUT_MS = 10_000L; // 10秒无输出判定超时
+    private static final long RETRY_INTERVAL_MS = 1_000L; // 重试打开相机间隔 1 秒
+    private static final long WATCHDOG_INTERVAL_MS = 1_000L; // 看门狗轮询检测间隔 1 秒
+
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private volatile long lastFrameTimestamp = 0L;
+    private volatile boolean isCameraStarted = false;
+    private volatile boolean isReconnecting = false;
+    private int retryCount = 0;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -90,8 +104,7 @@ public final class MainActivity extends Activity implements TextureView.SurfaceT
 
         numberOfCameras = Camera.getNumberOfCameras();
         if (numberOfCameras == 0) {
-            tvStatusInfo.setText("未检测到可用摄像头设备");
-            return;
+            tvStatusInfo.setText("未检测到可用摄像头设备，等待设备连接...");
         }
 
         if (checkCameraPermission()) {
@@ -251,10 +264,12 @@ public final class MainActivity extends Activity implements TextureView.SurfaceT
     }
 
     private void switchCamera() {
+        numberOfCameras = Camera.getNumberOfCameras();
         if (numberOfCameras <= 1) {
-            Toast.makeText(this, "仅有 1 个可用摄像头", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "仅有 " + numberOfCameras + " 个可用摄像头", Toast.LENGTH_SHORT).show();
             return;
         }
+        cancelReconnect();
         currentCameraId = (currentCameraId + 1) % numberOfCameras;
         stopCamera();
         startCamera();
@@ -303,6 +318,14 @@ public final class MainActivity extends Activity implements TextureView.SurfaceT
     @Override
     protected void onPause() {
         super.onPause();
+        cancelReconnect();
+        stopCamera();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        cancelReconnect();
         stopCamera();
     }
 
@@ -333,19 +356,123 @@ public final class MainActivity extends Activity implements TextureView.SurfaceT
 
     @Override
     public void onSurfaceTextureUpdated(SurfaceTexture surface) {
+        lastFrameTimestamp = SystemClock.uptimeMillis();
+        if (isReconnecting) {
+            isReconnecting = false;
+            retryCount = 0;
+            mainHandler.removeCallbacks(retryConnectRunnable);
+            Log.i(TAG, "Camera frame received! Reconnection successful.");
+            updateStatus("预览中");
+        }
+    }
+
+    private void startWatchdog() {
+        mainHandler.removeCallbacks(watchdogRunnable);
+        mainHandler.postDelayed(watchdogRunnable, WATCHDOG_INTERVAL_MS);
+    }
+
+    private void stopWatchdog() {
+        mainHandler.removeCallbacks(watchdogRunnable);
+    }
+
+    private final Runnable watchdogRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (isCameraStarted && !isReconnecting) {
+                long now = SystemClock.uptimeMillis();
+                if (lastFrameTimestamp > 0 && (now - lastFrameTimestamp >= FRAME_TIMEOUT_MS)) {
+                    Log.w(TAG, "No camera frame received for " + (now - lastFrameTimestamp) + "ms. Triggering reconnect.");
+                    triggerReconnect("超过 10 秒无画面输出");
+                    return;
+                }
+            }
+            if (isCameraStarted) {
+                mainHandler.postDelayed(this, WATCHDOG_INTERVAL_MS);
+            }
+        }
+    };
+
+    private void triggerReconnect(String reason) {
+        if (isReconnecting) {
+            return;
+        }
+        isReconnecting = true;
+        retryCount = 0;
+        Log.w(TAG, "triggerReconnect called: " + reason);
+
+        // 停止并释放当前可能已失效的旧相机
+        stopCamera();
+
+        updateStatus("无画面输出，正在重试连接 (1s)...");
+
+        mainHandler.removeCallbacks(retryConnectRunnable);
+        mainHandler.postDelayed(retryConnectRunnable, RETRY_INTERVAL_MS);
+    }
+
+    private final Runnable retryConnectRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (!isReconnecting) {
+                return;
+            }
+            retryCount++;
+            numberOfCameras = Camera.getNumberOfCameras();
+            Log.d(TAG, "Retrying to connect camera #" + currentCameraId + " (attempt " + retryCount + "), total cameras: " + numberOfCameras);
+
+            if (currentSurfaceTexture != null && numberOfCameras > 0 && currentCameraId < numberOfCameras) {
+                boolean success = startCameraInternal();
+                if (success) {
+                    Log.i(TAG, "Camera reopened successfully, waiting for frame output...");
+                    updateStatus(String.format("相机已重新打开，等待画面输出 (第 %d 次)...", retryCount));
+                    startWatchdog();
+                    return;
+                }
+            }
+
+            updateStatus(String.format("无画面输出，正在重试连接 (第 %d 次)...", retryCount));
+            mainHandler.postDelayed(this, RETRY_INTERVAL_MS);
+        }
+    };
+
+    private void cancelReconnect() {
+        isReconnecting = false;
+        retryCount = 0;
+        mainHandler.removeCallbacks(retryConnectRunnable);
     }
 
     private void startCamera() {
+        cancelReconnect();
+        startCameraInternal();
+    }
+
+    private boolean startCameraInternal() {
         if (camera != null || currentSurfaceTexture == null) {
-            return;
+            return false;
+        }
+
+        numberOfCameras = Camera.getNumberOfCameras();
+        if (numberOfCameras == 0 || currentCameraId >= numberOfCameras) {
+            updateStatus(String.format("相机未就绪 (ID: %d, 可用总数: %d)", currentCameraId, numberOfCameras));
+            if (!isReconnecting) {
+                triggerReconnect("相机设备未就绪");
+            }
+            return false;
         }
 
         try {
             camera = Camera.open(currentCameraId);
             if (camera == null) {
                 updateStatus("打开摄像头失败 (ID: " + currentCameraId + ")");
-                return;
+                if (!isReconnecting) {
+                    triggerReconnect("打开摄像头失败");
+                }
+                return false;
             }
+
+            camera.setErrorCallback((error, cam) -> {
+                Log.e(TAG, "Camera.setErrorCallback: " + error);
+                mainHandler.post(() -> triggerReconnect("相机硬件错误 (" + error + ")"));
+            });
 
             Camera.Parameters parameters = camera.getParameters();
             List<Camera.Size> supportedSizes = parameters.getSupportedPreviewSizes();
@@ -366,16 +493,29 @@ public final class MainActivity extends Activity implements TextureView.SurfaceT
             applyTransform();
 
             camera.startPreview();
-            updateStatus("预览中");
+            isCameraStarted = true;
+            lastFrameTimestamp = SystemClock.uptimeMillis();
+            startWatchdog();
+
+            if (!isReconnecting) {
+                updateStatus("预览中");
+            }
+            return true;
 
         } catch (Exception e) {
             Log.e(TAG, "Failed to start camera", e);
             updateStatus("启动相机异常: " + e.getMessage());
             stopCamera();
+            if (!isReconnecting) {
+                triggerReconnect("启动异常: " + e.getMessage());
+            }
+            return false;
         }
     }
 
     private void stopCamera() {
+        isCameraStarted = false;
+        stopWatchdog();
         if (camera != null) {
             try {
                 camera.stopPreview();
@@ -383,7 +523,11 @@ public final class MainActivity extends Activity implements TextureView.SurfaceT
             } catch (Exception e) {
                 Log.e(TAG, "Error stopping camera", e);
             }
-            camera.release();
+            try {
+                camera.release();
+            } catch (Exception e) {
+                Log.e(TAG, "Error releasing camera", e);
+            }
             camera = null;
         }
     }
@@ -475,7 +619,9 @@ public final class MainActivity extends Activity implements TextureView.SurfaceT
             textureView.setScaleY(mirrorVertical ? -1.0f : 1.0f);
         }
 
-        updateStatus("运行中");
+        if (!isReconnecting) {
+            updateStatus("预览中");
+        }
     }
 
     private void updateStatus(String state) {
